@@ -808,6 +808,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, 'frontend', 'dist')));
 
 const auth = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -1636,6 +1637,16 @@ initDB()
   .then(() => {
     ensureUploadsDir();
     console.log('✅ Database initialized');
+    
+    app.get('*', (req, res) => {
+      const indexPath = path.join(__dirname, 'frontend', 'dist', 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send('Frontend not found');
+      }
+    });
+
     if (!process.env.VERCEL) {
       app.listen(PORT, () => {
         console.log(`🚀 Server running on port ${PORT}`);
