@@ -20,8 +20,8 @@ const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 const DB_PATH = process.env.VERCEL ? path.join(require('os').tmpdir(), 'clauseg.db') : path.join(__dirname, 'clauseg.db');
 const ADMIN_USER = process.env.ADMIN_USERNAME || 'sharqtech';
 const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'sharqtech1505';
-const PRIMARY_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-const FALLBACK_GEMINI_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-1.5-pro';
+const PRIMARY_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const FALLBACK_GEMINI_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash';
 
 let db;
 
