@@ -1628,6 +1628,18 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  const indexPath = path.join(__dirname, 'frontend', 'dist', 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    next();
+  }
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack || err.message);
   res.status(500).json({ error: err.message || 'Internal server error' });
@@ -1637,15 +1649,6 @@ initDB()
   .then(() => {
     ensureUploadsDir();
     console.log('✅ Database initialized');
-    
-    app.get('*', (req, res) => {
-      const indexPath = path.join(__dirname, 'frontend', 'dist', 'index.html');
-      if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-      } else {
-        res.status(404).send('Frontend not found');
-      }
-    });
 
     if (!process.env.VERCEL) {
       app.listen(PORT, () => {
