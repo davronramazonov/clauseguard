@@ -17,7 +17,7 @@ const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-env';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
-const DB_PATH = path.join(__dirname, 'clauseg.db');
+const DB_PATH = process.env.VERCEL ? path.join(require('os').tmpdir(), 'clauseg.db') : path.join(__dirname, 'clauseg.db');
 const ADMIN_USER = process.env.ADMIN_USERNAME || 'sharqtech';
 const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'sharqtech1505';
 const PRIMARY_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
@@ -113,7 +113,7 @@ const JURISDICTION_PATTERNS = {
 };
 
 function ensureUploadsDir() {
-  const dir = path.join(__dirname, 'uploads');
+  const dir = process.env.VERCEL ? path.join(require('os').tmpdir(), 'uploads') : path.join(__dirname, 'uploads');
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -1636,11 +1636,15 @@ initDB()
   .then(() => {
     ensureUploadsDir();
     console.log('✅ Database initialized');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
+    if (!process.env.VERCEL) {
+      app.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+      });
+    }
   })
   .catch((err) => {
     console.error('❌ Database error:', err);
-    process.exit(1);
+    if (!process.env.VERCEL) process.exit(1);
   });
+
+module.exports = app;
