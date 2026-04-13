@@ -20,8 +20,7 @@ const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 const DB_PATH = process.env.VERCEL ? path.join(require('os').tmpdir(), 'clauseg.db') : path.join(__dirname, 'clauseg.db');
 const ADMIN_USER = process.env.ADMIN_USERNAME || 'sharqtech';
 const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'sharqtech1505';
-const PRIMARY_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const FALLBACK_GEMINI_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash';
+
 
 let db;
 
@@ -580,45 +579,50 @@ function getQuotaMessage(error) {
   return 'AI limiti vaqtincha tugagan. Birozdan keyin yana urinib ko‘ring.';
 }
 
-async function callGemini({ model, prompt, apiKey }) {
+const PRIMARY_AI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const FALLBACK_AI_MODEL = process.env.OPENAI_FALLBACK_MODEL || 'gpt-3.5-turbo';
+
+async function callOpenAI({ model, prompt, apiKey }) {
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      'https://api.openai.com/v1/chat/completions',
       {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 2600,
-          responseMimeType: 'application/json'
-        }
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 2600,
+        response_format: { type: 'json_object' }
       },
       {
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
         timeout: 45000
       }
     );
 
-    const candidates = response?.data?.candidates;
-    if (candidates && candidates.length > 0 && candidates[0].content) {
-      return candidates[0].content.parts[0].text;
+    const content = response?.data?.choices?.[0]?.message?.content;
+    if (content) {
+      return content;
     }
 
-    throw new Error("Gemini API dan bo'sh javob qaytdi");
+    throw new Error("OpenAI dan bo'sh javob qaytdi");
   } catch (error) {
     if (error.response && error.response.data && error.response.data.error) {
       const errorMessage = error.response.data.error.message;
-      console.error(`Gemini API Xatosi (${model}):`, errorMessage);
-      throw new Error(`Gemini xatosi: ${errorMessage}`);
+      console.error(`OpenAI API Xatosi (${model}):`, errorMessage);
+      throw new Error(`OpenAI xatosi: ${errorMessage}`);
     }
-    console.error(`Tarmoq xatosi yoki Gemini ishlamayapti (${model}):`, error.message);
+    console.error(`Tarmoq xatosi yoki OpenAI ishlamayapti (${model}):`, error.message);
     throw error;
   }
 }
 
 async function analyzeWithAI(text, lang = 'uz', jurisdictionMeta = {}) {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.error('AI Error: GEMINI_API_KEY topilmadi');
+    console.error('AI Error: OPENAI_API_KEY topilmadi');
     return fallbackAnalysis('AI unavailable', { language: lang, ...jurisdictionMeta });
   }
 
@@ -680,17 +684,17 @@ Document:
 ${safeText}
 `;
 
-  const models = [PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODEL].filter(Boolean);
+  const models = [PRIMARY_AI_MODEL, FALLBACK_AI_MODEL].filter(Boolean);
   let lastQuotaError = null;
   let lastParseError = null;
 
   for (const model of models) {
-    const maxAttempts = model === PRIMARY_GEMINI_MODEL ? 2 : 1;
+    const maxAttempts = model === PRIMARY_AI_MODEL ? 2 : 1;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         console.log(`AI request -> model: ${model}, attempt: ${attempt}`);
-        const resultText = await callGemini({ model, prompt, apiKey });
+        const resultText = await callOpenAI({ model, prompt, apiKey });
 
         if (!resultText) {
           throw new Error('Empty AI response');
