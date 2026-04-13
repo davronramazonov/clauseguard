@@ -750,8 +750,15 @@ function isValidHttpUrl(value) {
 async function parseFileToText(filePath, mimeType) {
   try {
     if (mimeType === 'application/pdf') {
-      const data = await pdf(fs.readFileSync(filePath));
-      return data.text || '';
+      try {
+        const data = await pdf(fs.readFileSync(filePath));
+        if (data.text && data.text.trim()) {
+          return data.text;
+        }
+      } catch (pdfErr) {
+        console.log('PDF parse failed, trying OCR...');
+      }
+      return '';
     }
 
     if (mimeType === 'text/plain') {
@@ -1247,7 +1254,9 @@ app.post('/api/extract-text/upload', auth, upload.single('file'), async (req, re
     safeUnlink(req.file.path);
 
     if (!String(text || '').trim()) {
-      return res.status(400).json({ error: 'Fayldan matn ajratib bo‘lmadi' });
+      return res.status(400).json({ 
+        error: 'Fayldan matn ajratib bo\'lmadi. PDF buzilgan yoki rasm sifati past bo\'lishi mumkin. Boshqa formatda yuklab ko\'ring.' 
+      });
     }
 
     return res.json({
